@@ -11,3 +11,5 @@ run-demo.bat
 publish-private.md
 site/dist/
 empire/videos/*/prev/
+empire/videos/*/vo/*.npz
+empire/_kit/audition/

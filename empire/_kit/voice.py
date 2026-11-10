@@ -1,73 +1,294 @@
 #!/usr/bin/env python3
-"""Generate per-line voice-over with ElevenLabs (character timestamps) for a video folder.
+"""Studio voice-over with automatic fallbacks and one locked voice identity.
 
-usage: python3 empire/_kit/voice.py empire/videos/<id>
-reads  script.json, writes vo/<line>.mp3, vo/<line>.json (word timings), vo/timeline.json
-Needs ELEVENLABS_API_KEY in the environment, or a proxy that injects it.
+  python3 empire/_kit/voice.py audition [Gacrux Charon Algieba]   # same sample in each voice -> empire/_kit/audition/
+  python3 empire/_kit/voice.py <video>                            # narrate script.json via the chain in voice_profile.json
+  python3 empire/_kit/voice.py <video> --brief                    # write vo/VOICE_BRIEF.md for a human/external recording
+  python3 empire/_kit/voice.py <video> --import <audio file>      # use an uploaded recording, split + sync it to the lines
+
+Chain (voice_profile.json "chain"): gemini -> elevenlabs -> manual. A provider that fails (no key, quota,
+outage) on ANY line is dropped for the whole video, so a video never mixes two voices. Nothing here buys
+credits or turns on billing; "manual" writes the recording brief and stops.
+Output: vo/<line>.wav, vo/narration.wav, vo/timeline.json (read by build.py).
 """
-import base64, json, os, subprocess, sys, urllib.request
+import base64, hashlib, json, os, re, subprocess, sys, urllib.error, urllib.request, wave
+import numpy as np
 
-GAP = 0.28  # breath between lines (s)
+KIT = os.path.dirname(os.path.abspath(__file__))
+SR = 48000
+SAMPLE = "يناير، ألف وتسعمئة وتسعة عشر. موجةٌ بارتفاع ثمانية أمتار تقريبًا تجتاح مدينة بوسطن… لكنها لم تكن ماء."
 
 
-def tts(text, voice, model, prev=None, nxt=None):
-    body = {"text": text, "model_id": model,
-            "voice_settings": {"stability": 0.45, "similarity_boost": 0.8, "style": 0.35, "use_speaker_boost": True}}
+class ProviderDown(Exception):
+    pass
+
+
+def profile(folder=None):
+    p = json.load(open(os.path.join(KIT, "voice_profile.json"), encoding="utf-8"))
+    if folder:
+        o = json.load(open(os.path.join(folder, "script.json"), encoding="utf-8")).get("voice_override")
+        if o:
+            for k, v in o.items():
+                p[k] = {**p.get(k, {}), **v} if isinstance(v, dict) else v
+    return p
+
+
+def spoken(text, lex):
+    for a, b in sorted(((a, b) for a, b in lex.items() if not a.startswith("_")), key=lambda x: -len(x[0])):
+        text = text.replace(a, b)
+    return text
+
+
+def post(url, body, headers, timeout=180):
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
+                                 headers={"Content-Type": "application/json", **headers})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", "replace")
+        try:
+            j = json.loads(raw); msg = (j.get("error") or j.get("detail") or {}).get("message", raw)
+        except Exception:
+            msg = raw
+        raise ProviderDown(f"HTTP {e.code}: {' '.join(str(msg).split())[:160]}")
+    except (urllib.error.URLError, TimeoutError) as e:
+        raise ProviderDown(f"network: {e}")
+
+
+# ---------------- providers: each returns (pcm float32 mono @SR, words or None) ----------------
+def gemini(text, P, voice=None):
+    g = P["gemini"]; voice = voice or g["voice"]
+    key = os.environ.get(g.get("key_env", "GEMINI_API_KEY"), "proxy-injected")
+    last = None
+    for model in g["models"]:
+        try:
+            r = post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                     {"contents": [{"parts": [{"text": g["direction"] + "\n" + text}]}],
+                      "generationConfig": {"responseModalities": ["AUDIO"],
+                                           "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}}}},
+                     {"x-goog-api-key": key})
+            part = r["candidates"][0]["content"]["parts"][0]["inlineData"]
+            rate = int(re.search(r"rate=(\d+)", part.get("mimeType", "")).group(1)) if "rate=" in part.get("mimeType", "") else 24000
+            pcm = np.frombuffer(base64.b64decode(part["data"]), "<i2").astype(np.float32) / 32768
+            return resample(pcm, rate), None
+        except ProviderDown as e:
+            last = e
+            if "HTTP 404" in str(e) or ("HTTP 400" in str(e) and "model" in str(e).lower() and "key" not in str(e).lower()):
+                continue  # model name retired/unknown: try the next model
+            raise
+        except (KeyError, IndexError) as e:
+            last = ProviderDown(f"unexpected response: {e}")
+    raise last
+
+
+def elevenlabs(text, P, prev=None, nxt=None):
+    e = P["elevenlabs"]
+    body = {"text": text, "model_id": e["model_id"],
+            "voice_settings": {"stability": 0.5, "similarity_boost": 0.8, "style": 0.25, "use_speaker_boost": True}}
     if prev: body["previous_text"] = prev
     if nxt: body["next_text"] = nxt
-    req = urllib.request.Request(
-        f"https://api.elevenlabs.io/v1/text-to-speech/{voice}/with-timestamps?output_format=mp3_44100_128",
-        data=json.dumps(body).encode(), method="POST",
-        headers={"Content-Type": "application/json", "xi-api-key": os.environ.get("ELEVENLABS_API_KEY", "proxy")})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return json.load(r)
-
-
-def words(al):
-    out, cur, st = [], "", None
-    for ch, s, e in zip(al["characters"], al["character_start_times_seconds"], al["character_end_times_seconds"]):
+    r = post(f"https://api.elevenlabs.io/v1/text-to-speech/{e['voice_id']}/with-timestamps?output_format=pcm_24000",
+             body, {"xi-api-key": os.environ.get("ELEVENLABS_API_KEY", "proxy-injected")})
+    pcm = np.frombuffer(base64.b64decode(r["audio_base64"]), "<i2").astype(np.float32) / 32768
+    al = r["alignment"]; words, cur, st = [], "", None
+    for ch, s, en in zip(al["characters"], al["character_start_times_seconds"], al["character_end_times_seconds"]):
         if ch.isspace():
-            if cur: out.append({"w": cur, "s": st, "e": last})
-            cur, st = "", None
-            continue
+            if cur: words.append([st, last])
+            cur, st = "", None; continue
         if st is None: st = s
-        cur += ch; last = e
-    if cur: out.append({"w": cur, "s": st, "e": last})
+        cur += ch; last = en
+    if cur: words.append([st, last])
+    return resample(pcm, 24000), words
+
+
+# ---------------- audio helpers ----------------
+def resample(x, rate):
+    if rate == SR: return x
+    n = int(len(x) * SR / rate)
+    return np.interp(np.linspace(0, len(x) - 1, n), np.arange(len(x)), x).astype(np.float32)
+
+
+def ffmpeg_filter(x, af):
+    """Run mono float audio through an ffmpeg filter chain (same chain for every provider = same sound)."""
+    p = subprocess.run(["ffmpeg", "-v", "error", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-", "-af", af,
+                        "-f", "f32le", "-ar", str(SR), "-ac", "1", "-"], input=x.astype("<f4").tobytes(), capture_output=True, check=True)
+    return np.frombuffer(p.stdout, "<f4").copy()
+
+
+# Voice "house sound": remove rumble, a touch of low warmth, tame harshness, gentle compression.
+MASTER = ("highpass=f=70,equalizer=f=140:t=q:w=1:g=2,equalizer=f=3500:t=q:w=1.5:g=-1.5,"
+          "equalizer=f=7500:t=q:w=2:g=1,acompressor=threshold=-20dB:ratio=2.5:attack=8:release=120:makeup=2")
+
+
+def trim(x, thr=0.012):
+    a = np.abs(x); idx = np.where(np.convolve(a, np.ones(480) / 480, "same") > thr)[0]
+    if not len(idx): return x, 0.0
+    s, e = max(0, idx[0] - 1200), min(len(x), idx[-1] + 2400)
+    return x[s:e], s / SR
+
+
+def save_wav(path, x, ch=1):
+    x = np.clip(x, -1, 1)
+    if ch == 2: x = np.stack([x, x], 1)
+    with wave.open(path, "wb") as w:
+        w.setnchannels(ch); w.setsampwidth(2); w.setframerate(SR); w.writeframes((x * 32767).astype("<i2").tobytes())
+
+
+def load_audio(path):
+    p = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "f32le", "-ar", str(SR), "-ac", "1", "-"], capture_output=True, check=True)
+    return np.frombuffer(p.stdout, "<f4").copy()
+
+
+def pitch(x):
+    """Median F0 (Hz) over voiced 40 ms frames: a rough 'depth' measure for auditions."""
+    f, out = int(.04 * SR), []
+    for i in range(0, len(x) - f, f):
+        fr = x[i:i + f]
+        if np.sqrt(np.mean(fr ** 2)) < 0.03: continue
+        c = np.correlate(fr, fr, "full")[f - 1:]
+        lo, hi = int(SR / 300), int(SR / 60)
+        k = lo + int(np.argmax(c[lo:hi]))
+        if c[k] > 0.35 * c[0]: out.append(SR / k)
+    return float(np.median(out)) if out else 0.0
+
+
+# ---------------- timing ----------------
+def weights(text):
+    """Per-word time weight: letters, plus extra hold for punctuation that the narrator pauses on."""
+    ws = text.split(); out = []
+    for w in ws:
+        k = len(re.sub(r"[ً-ْ\W]", "", w)) + 2
+        if w.endswith("…"): k += 6
+        elif w[-1] in ".؟?!": k += 4
+        elif w[-1] in "،,:": k += 2
+        out.append(k)
+    return ws, out
+
+
+def word_times(text, dur, measured=None):
+    ws, wt = weights(text)
+    if measured and len(measured) == len(ws):
+        return [{"w": w, "s": round(a, 3), "e": round(b, 3)} for w, (a, b) in zip(ws, measured)]
+    tot, t, out = sum(wt), 0.0, []
+    for w, k in zip(ws, wt):
+        d = dur * k / tot; out.append({"w": w, "s": round(t, 3), "e": round(t + d * .85, 3)}); t += d
     return out
 
 
-def dur(p):
-    return float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", p]).strip())
+def assemble(folder, lines, clips, provider, voice):
+    P = profile(folder); pace = P["pace"]; vo = os.path.join(folder, "vo")
+    t, tl, parts = pace["lead_in"], [], []
+    for ln, (x, measured) in zip(lines, clips):
+        d = len(x) / SR
+        ws = [{"w": w["w"], "s": round(t + w["s"], 3), "e": round(t + w["e"], 3)} for w in word_times(ln["text"], d, measured)]
+        tl.append({**ln, "start": round(t, 3), "end": round(t + d, 3), "words": ws})
+        parts.append((t, x))
+        t += d + (pace["gap_after_ellipsis_line"] if ln["text"].rstrip().endswith("…") else pace["gap_between_lines"])
+    D = t + 2.2
+    nar = np.zeros(int(D * SR), np.float32)
+    for st, x in parts:
+        a = int(st * SR); nar[a:a + len(x)] += x[:len(nar) - a]
+    nar = ffmpeg_filter(nar, "loudnorm=I=-16:TP=-1.5:LRA=7")
+    save_wav(os.path.join(vo, "narration.wav"), nar, 2)
+    json.dump({"duration": round(D, 3), "provider": provider, "voice": voice, "lines": tl},
+              open(os.path.join(vo, "timeline.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    print(f"ok: {provider}/{voice} · {len(tl)} lines · {D:.1f}s -> {vo}/narration.wav")
 
 
-def main(folder):
-    sc = json.load(open(os.path.join(folder, "script.json"), encoding="utf-8"))
-    vo = os.path.join(folder, "vo"); os.makedirs(vo, exist_ok=True)
-    v = sc["voice"]; lines = sc["lines"]; t = 0.35; tl = []
-    for i, ln in enumerate(lines):
-        mp3 = os.path.join(vo, ln["id"] + ".mp3"); js = os.path.join(vo, ln["id"] + ".json")
-        if not os.path.exists(mp3):
-            r = tts(ln["text"], v["voice_id"], v["model_id"],
-                    lines[i - 1]["text"] if i else None, lines[i + 1]["text"] if i + 1 < len(lines) else None)
-            open(mp3, "wb").write(base64.b64decode(r["audio_base64"]))
-            json.dump(words(r["alignment"]), open(js, "w", encoding="utf-8"), ensure_ascii=False)
-        d = dur(mp3); ws = json.load(open(js, encoding="utf-8"))
-        tl.append({**ln, "start": round(t, 3), "end": round(t + d, 3),
-                   "words": [{"w": w["w"], "s": round(t + w["s"], 3), "e": round(t + w["e"], 3)} for w in ws]})
-        t += d + GAP
-    json.dump({"duration": round(t + 1.2, 3), "lines": tl}, open(os.path.join(vo, "timeline.json"), "w", encoding="utf-8"),
-              ensure_ascii=False, indent=1)
-    # one continuous narration track
-    parts = []
-    for ln in tl:
-        parts.append(f"[{len(parts)}:a]adelay={int(ln['start']*1000)}|{int(ln['start']*1000)}[a{len(parts)}]")
-    cmd = ["ffmpeg", "-y", "-v", "error"]
-    for ln in tl: cmd += ["-i", os.path.join(vo, ln["id"] + ".mp3")]
-    mix = ";".join(parts) + ";" + "".join(f"[a{i}]" for i in range(len(tl))) + f"amix=inputs={len(tl)}:normalize=0,apad=whole_dur={t+1.2}[o]"
-    cmd += ["-filter_complex", mix, "-map", "[o]", "-ar", "48000", "-ac", "2", os.path.join(vo, "narration.wav")]
-    subprocess.check_call(cmd)
-    print(f"ok: {len(tl)} lines, {t+1.2:.1f}s")
+def narrate(folder):
+    P = profile(folder); sc = json.load(open(os.path.join(folder, "script.json"), encoding="utf-8"))
+    lines = sc["lines"]; vo = os.path.join(folder, "vo"); os.makedirs(vo, exist_ok=True)
+    log = []
+    for prov in P["chain"]:
+        if prov == "manual":
+            brief(folder)
+            print("\nno voice service is available right now:\n  " + "\n  ".join(log) +
+                  f"\n-> recording brief written: {vo}/VOICE_BRIEF.md\n-> record it, then: voice.py {folder} --import <file>")
+            sys.exit(2)
+        voice = P[prov].get("voice") or P[prov].get("voice_id")
+        clips = []
+        try:
+            for i, ln in enumerate(lines):
+                txt = spoken(ln["text"], P["lexicon"])
+                h = hashlib.sha1(json.dumps([prov, voice, P[prov].get("direction", ""), txt]).encode()).hexdigest()[:10]
+                cache = os.path.join(vo, f"{ln['id']}.{prov}.{h}.npz")
+                if os.path.exists(cache):
+                    z = np.load(cache, allow_pickle=True); x, m = z["x"], (z["m"].tolist() or None)
+                else:
+                    if prov == "gemini": x, m = gemini(txt, P)
+                    else: x, m = elevenlabs(txt, P, lines[i - 1]["text"] if i else None, lines[i + 1]["text"] if i + 1 < len(lines) else None)
+                    np.savez(cache, x=x, m=np.array(m or [], dtype=float))
+                    print(f"  {prov}: {ln['id']} ✓", flush=True)
+                x = ffmpeg_filter(x, MASTER); x, off = trim(x)
+                if m: m = [[a - off, b - off] for a, b in m]
+                clips.append((x, m))
+        except ProviderDown as e:
+            log.append(f"{prov}: {e}"); print(f"  {prov} unavailable -> next ({e})", flush=True); continue
+        return assemble(folder, lines, clips, prov, voice)
+
+
+def import_audio(folder, path):
+    """Split an uploaded recording into the script's lines at its longest silences, then sync."""
+    sc = json.load(open(os.path.join(folder, "script.json"), encoding="utf-8")); lines = sc["lines"]
+    os.makedirs(os.path.join(folder, "vo"), exist_ok=True)
+    x = ffmpeg_filter(load_audio(path), MASTER); x, _ = trim(x)
+    env = np.convolve(np.abs(x), np.ones(960) / 960, "same"); quiet = env < max(0.004, 0.1 * np.percentile(env, 95))
+    gaps, i, n = [], 0, len(x)
+    while i < n:
+        if quiet[i]:
+            j = i
+            while j < n and quiet[j]: j += 1
+            if (j - i) / SR > 0.18: gaps.append(((j - i) / SR, (i + j) // 2))
+            i = j
+        else: i += 1
+    cuts = sorted(c for _, c in sorted(gaps, reverse=True)[:len(lines) - 1])
+    if len(cuts) < len(lines) - 1:  # not enough pauses: split by text length instead
+        tot = sum(sum(weights(l["text"])[1]) for l in lines); acc, cuts = 0, []
+        for l in lines[:-1]:
+            acc += sum(weights(l["text"])[1]); cuts.append(int(n * acc / tot))
+        print("  warning: recording has fewer pauses than lines; split by text length (check sync in the preview)")
+    bounds = [0] + cuts + [n]
+    clips = [(trim(x[a:b])[0], None) for a, b in zip(bounds, bounds[1:])]
+    assemble(folder, lines, clips, "import", os.path.basename(path))
+
+
+def brief(folder):
+    P = profile(folder); sc = json.load(open(os.path.join(folder, "script.json"), encoding="utf-8"))
+    g = P["gemini"]; out = [f"# تسجيل التعليق الصوتي: {sc['title']}", "",
+        "## الهوية الصوتية (ثابتة في كل المقاطع)",
+        f"- الصوت المعتمد: **{g['voice']}** في Gemini TTS (Google AI Studio ← Generate speech)",
+        "- رجل ناضج، عميق، دافئ، هادئ وواثق. سرد وثائقي سينمائي بلا صراخ ولا تمثيل مبالغ فيه",
+        "- الإيقاع متمهّل (نحو 2.3 كلمة في الثانية). وقفة قصيرة عند الفاصلة والنقطة، ووقفة أطول فيها تشويق عند (…)",
+        "- فصحى سليمة. التشكيل أدناه للنطق فقط", "",
+        "## تعليمات الأداء (انسخها كما هي في خانة Style instructions)", "", "```", g["direction"], "```", "",
+        "## النص (سطر لكل مشهد، واترك ثانية صمت بين كل سطر والذي يليه)", ""]
+    for ln in sc["lines"]:
+        out.append(f"{ln['id']}. {spoken(ln['text'], P['lexicon'])}")
+    out += ["", "## التسليم",
+            "ملف واحد (WAV أو MP3) فيه كل السطور بالترتيب، مع ثانية صمت بينها. ارفعه وقل لي، وأنا أقسّمه وأزامنه وأدمجه."]
+    p = os.path.join(folder, "vo", "VOICE_BRIEF.md"); os.makedirs(os.path.dirname(p), exist_ok=True)
+    open(p, "w", encoding="utf-8").write("\n".join(out) + "\n"); return p
+
+
+def audition(voices):
+    P = profile(); d = os.path.join(KIT, "audition"); os.makedirs(d, exist_ok=True); rows = []
+    for v in voices or P["gemini"]["candidates"]:
+        try:
+            x, _ = gemini(spoken(SAMPLE, P["lexicon"]), P, v)
+        except ProviderDown as e:
+            print(f"{v}: unavailable ({e})"); continue
+        x, _ = trim(ffmpeg_filter(x, MASTER)); save_wav(os.path.join(d, f"{v}.wav"), x)
+        wps = len(SAMPLE.split()) / (len(x) / SR)
+        rows.append((v, pitch(x), wps)); print(f"{v}: median pitch {rows[-1][1]:.0f} Hz · {wps:.2f} words/s -> {d}/{v}.wav")
+    if rows:
+        print("deepest:", min(rows, key=lambda r: r[1])[0], "(depth is one criterion; the final pick is by ear)")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    a = sys.argv[1:]
+    if not a: sys.exit(__doc__)
+    if a[0] == "audition": audition(a[1:])
+    elif "--brief" in a: print(brief(os.path.abspath(a[0])))
+    elif "--import" in a: import_audio(os.path.abspath(a[0]), a[a.index("--import") + 1])
+    else: narrate(os.path.abspath(a[0]))

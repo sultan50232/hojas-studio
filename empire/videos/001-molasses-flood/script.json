@@ -2,7 +2,7 @@
   "id": "001",
   "title": "فيضان الدبس القاتل — بوسطن 1919",
   "pillar": "A+D (قصة مذهلة حقيقية بأسلوب تاريخي سينمائي)",
-  "voice": {"voice_id": "nPczCjzI2devNBz1zQrb", "model_id": "eleven_multilingual_v2", "note": "صوت مؤقت من مكتبة ElevenLabs العامة. ضع معرّف صوتك المعتمد هنا وأعد التوليد."},
+  "_voice": "الهوية الصوتية من empire/_kit/voice_profile.json (لتغييرها لهذا المقطع فقط: voice_override)",
   "lines": [
     {"id": "s1", "scene": "hook",    "text": "يناير، ألف وتسعمئة وتسعة عشر. موجةٌ بارتفاع ثمانية أمتار تقريبًا تجتاح مدينة بوسطن."},
     {"id": "s2", "scene": "reveal",  "text": "لكنها لم تكن ماء… كانت دِبسَ سكر."},

@@ -1,0 +1,34 @@
+{
+  "_about": "The studio's single voice identity. Every video uses this file unless its own script.json overrides it. Change the voice here once, never per video.",
+  "chain": ["gemini", "elevenlabs", "manual"],
+  "free_only": true,
+  "gemini": {
+    "voice": "Gacrux",
+    "candidates": ["Gacrux", "Charon", "Algieba"],
+    "models": ["gemini-2.5-pro-preview-tts", "gemini-2.5-flash-preview-tts"],
+    "key_env": "GEMINI_API_KEY",
+    "direction": "You are the narrator of a premium Arabic documentary. Read the Arabic text below in clear Modern Standard Arabic with correct classical pronunciation. Voice: a mature man, deep, warm, calm and confident, like a cinematic history documentary. Pace: unhurried, about 2.3 words per second. Pause briefly at commas and full stops, hold a longer, suspenseful pause at every ellipsis (…). Build quiet tension; never shout, never sound dramatic or theatrical, never sound robotic. Do not read these instructions aloud. Text:"
+  },
+  "elevenlabs": {
+    "voice_id": "nPczCjzI2devNBz1zQrb",
+    "model_id": "eleven_multilingual_v2",
+    "note": "Only used while the account still has credits; never upgrades or buys credits."
+  },
+  "lexicon": {
+    "_about": "Spoken-only spellings (captions keep the original text). Add a diacritic or a phonetic spelling for any word a voice mispronounces.",
+    "دِبسَ سكر": "دِبْسَ سُكَّر",
+    "الدبس": "الدِّبْس",
+    "نورث إند": "نُورْث إِنْد",
+    "بوسطن": "بُوسْطُن",
+    "يئنّ": "يَئِنّ",
+    "طلَته": "طَلَتْهُ",
+    "ويسرّب": "وَيُسَرِّب",
+    "المعلّق": "المُعَلَّق",
+    "لزوجة": "لُزُوجَة",
+    "أُصيب": "أُصِيبَ",
+    "حُكم": "حُكِمَ",
+    "إلزاميًا": "إِلْزَامِيًّا",
+    "لعقود": "لِعُقُود"
+  },
+  "pace": {"gap_between_lines": 0.45, "gap_after_ellipsis_line": 0.7, "lead_in": 0.5}
+}

@@ -118,10 +118,11 @@ def sound(tl, out, narration=None):
     # music bed: drone the whole way, a heartbeat pulse that enters with the tank and stops at the burst
     mus += drone(D) * .22 * env(n, 1.5, 3)
     pa, pb = L["tank"]["start"], L["burst"]["start"]
+    bw = next((w["s"] for w in L["burst"]["words"] if w["w"].startswith("انفجر")), pb)
     p = pulse(pb - pa, 76) * env(int((pb - pa) * SR), 2, .2); place(mus, p, pa, .35)
     pc = L["wave"]["start"]; p2 = pulse(L["toll"]["start"] - pc, 96); place(mus, p2, pc, .3)
     # silence before the burst (drop) for impact
-    a, b = int((pb - .35) * SR), int((pb + .02) * SR); mus[a:b] *= np.linspace(1, 0, b - a)
+    a, b = int((bw - .35) * SR), int((bw + .02) * SR); mus[a:b] *= np.linspace(1, 0, b - a)
     mus[b:b + int(1.2 * SR)] *= np.linspace(0, 1, int(1.2 * SR))
     # SFX
     for l in tl["lines"][1:]:
@@ -131,15 +132,23 @@ def sound(tl, out, narration=None):
     for i in range(10): place(fx, tick(), L["tank"]["start"] + .4 + i * .32, .25)
     place(fx, creak(), L["leak"]["start"] + .2, .35)
     for i in range(6): place(fx, drip(), L["leak"]["start"] + .6 + i * .55, .2)
-    place(fx, boom(), pb, 1.0)
+    place(fx, boom(), bw - .03, 1.0)
     place(fx, rumble(L["wave"]["end"] - pc + .5), pc, .7)
     for i in range(5): place(fx, drip(), L["trap"]["start"] + .8 + i * .9, .25)
     for i in range(21): place(fx, tick(), L["toll"]["start"] + .2 + i * .09, .2)
     place(fx, thud(), L["verdict"]["start"] + (L["verdict"]["end"] - L["verdict"]["start"]) * .52, .9)
-    mix = mus * (.55 if narration is not None else 1.0) + fx * .8
+    if narration is not None:
+        # duck music and effects under the voice: smooth speech envelope -> gain 0.35 while talking, 1.0 in pauses
+        v = np.zeros(n); m = min(n, len(narration)); v[:m] = np.abs(narration[:m]).mean(1)
+        k = int(.25 * SR); sp = np.convolve(v, np.ones(k) / k, "same"); sp = np.clip(sp / (np.percentile(sp[sp > 1e-4], 60) + 1e-9), 0, 1)
+        duck = 1 - .65 * np.convolve(sp, np.ones(k) / k, "same")
+        mix = mus * duck * .8 + fx * (.45 + .55 * duck)
+    else:
+        mix = mus + fx * .8
     st = np.stack([mix, mix], 1)
     if narration is not None:
-        m = min(len(st), len(narration)); st[:m] += narration[:m] * 1.0
+        st = st / max(1e-9, np.abs(st).max()) * .35  # bed sits well under the voice
+        st[:m] += narration[:m] * .9
     st = st / max(1e-9, np.abs(st).max()) * .89
     with wave.open(out, "wb") as w:
         w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)

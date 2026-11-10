@@ -228,11 +228,11 @@ const S={
   $('drips').innerHTML=g;const p=eio(r(t,d*.55,d*.92));$('paintR').setAttribute('height',330*p);$('brush').setAttribute('y',545+330*p);$('brush').style.opacity=p>0&&p<1?1:0;
   $('ptag').style.opacity=r(t,d*.5,d*.6);$('ptag').style.transform=`translateY(${(1-eo(r(t,d*.5,d*.62)))*40}px)`;
   const sh=Math.sin(t*20)*r(t,0,d*.4)*(1-r(t,d*.4,d*.5))*3;$('leak').querySelector('svg').style.transform=`translateX(${sh}px)`;},
- burst(t,d){const R=rnd(3);let c='',sd='';const k=eo(r(t,.05,.5));
+ burst(t0,d,off=0){const t=t0-off;const R=rnd(3);let c='',sd='';const k=eo(r(t,.05,.5));
   for(let i=0;i<14;i++){const a=i/14*Math.PI*2+R()*.3,L=(260+R()*300)*k;let x=540,y=560,pth=`M${x} ${y}`;for(let j=1;j<=4;j++){x=540+Math.cos(a+(R()-.5)*.4)*L*j/4;y=560+Math.sin(a+(R()-.5)*.4)*L*j/4;pth+=` L${x} ${y}`}c+=`<path d="${pth}"/>`;
    const sp=eo(r(t,.05,1.6))*(500+R()*400);sd+=`<rect x="${540+Math.cos(a)*sp}" y="${560+Math.sin(a)*sp+r(t,.3,d)*300}" width="${20+R()*40}" height="${10+R()*20}" fill="#5b544c" transform="rotate(${t*200*(R()-.5)} ${540+Math.cos(a)*sp} ${560+Math.sin(a)*sp})"/>`}
   $('cracks').innerHTML=c;$('cracks').style.opacity=1-r(t,.8,1.6);$('shards').innerHTML=sd;
-  $('boom').style.transform=`scale(${1.6-.6*back(r(t,0,.45))})`;$('boom').style.opacity=r(t,0,.15);$('time').style.opacity=r(t,.6,.9);},
+  $('boom').style.transform=`scale(${1.6-.6*back(r(t0,0,.45))})`;$('boom').style.opacity=r(t0,0,.15);$('time').style.opacity=r(t0,.6,.9);$('cracks').style.display=$('shards').style.display=t<0?'none':'';},
  wave(t,d){const p=eio(r(t,0,d*.8));const xf=1180-p*1500,H=520*eo(r(t,0,.8));
   let dd=`M1200 1250 L${xf} 1250`;for(let x=xf;x<=1200;x+=15){const k=cl((x-xf)/220);const y=1250-H*(1-Math.pow(1-k,3))-Math.sin(x/60+t*6)*14*k-Math.sin(x/23+t*9)*6*k;dd+=` L${x} ${y}`}dd+=' Z';$('wv').setAttribute('d',dd);
   document.querySelectorAll('#street rect').forEach(e=>{const x=+e.getAttribute('x');const hit=r(xf,x+120,x-60);e.setAttribute('transform',`rotate(${-hit*9} ${x} 1150)`);e.style.opacity=1-hit*.6});
@@ -251,6 +251,8 @@ const S={
 };
 
 window.setup=tl=>{TL=tl};
+// the explosion lands on the spoken word, not on the start of the line
+function burstOff(ln){const w=ln.words.find(w=>w.w.startsWith('انفجر'));return w?Math.max(0,w.s-ln.start-.05):0}
 window.seek=(T,f)=>{
  const L=TL.lines;let i=L.findIndex((l,j)=>T<(j+1<L.length?L[j+1].start:1e9));if(i<0)i=L.length-1;
  const ln=L[i],nx=L[i+1];const sEnd=nx?nx.start:TL.duration;
@@ -259,7 +261,8 @@ window.seek=(T,f)=>{
  const fin=eo(r(lt,0,.25)), fout=1-r(T,sEnd-.18,sEnd);el.style.opacity=Math.min(fin,fout);
  el.style.transform=`scale(${1.04-.04*eo(r(lt,0,.5))})`;
  if(ln.scene==='wave')el.style.transform+='';
- S[ln.scene](lt,d);
+ const off=ln.scene==='burst'?burstOff(ln):0;
+ S[ln.scene](lt,d,off);
  // caption: words appear on their timing
  const cap=document.querySelector('#cap p');
  const words=ln.words.filter(w=>T>=w.s-.05);
@@ -267,8 +270,8 @@ window.seek=(T,f)=>{
  cap.style.opacity=fout<1&&nx?Math.max(fout,.0):1;
  $('cap').style.top=(ln.scene==='end'?1350:1270)+'px';
  // flash on burst
- $('flash').style.opacity=ln.scene==='burst'?.9*(1-r(lt,0,.35)):0;
- const shake=ln.scene==='burst'?(1-r(lt,0,1.2))*24:0;$('stage').style.transform=`translate(${Math.sin(T*90)*shake}px,${Math.cos(T*70)*shake}px)`;
+ const bt=lt-off;$('flash').style.opacity=ln.scene==='burst'&&bt>=0?.9*(1-r(bt,0,.35)):0;
+ const shake=ln.scene==='burst'&&bt>=0?(1-r(bt,0,1.2))*24:0;$('stage').style.transform=`translate(${Math.sin(T*90)*shake}px,${Math.cos(T*70)*shake}px)`;
  $('bg').style.transform=`translate(${Math.sin(T*.2)*30}px,${Math.cos(T*.15)*30}px) scale(1.05)`;
  document.querySelector('#bar i').style.width=(T/TL.duration*100)+'%';
  drawGrain(f||0);
