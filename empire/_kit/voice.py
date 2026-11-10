@@ -53,7 +53,7 @@ def post(url, body, headers, timeout=180):
         except Exception:
             msg = raw
         raise ProviderDown(f"HTTP {e.code}: {' '.join(str(msg).split())[:160]}")
-    except (urllib.error.URLError, TimeoutError) as e:
+    except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as e:
         raise ProviderDown(f"network: {e}")
 
 
@@ -88,7 +88,9 @@ def gemini_models(P, key):
         pass
     pref = [m for m in g["models"] if not found or m in found] + sorted(m for m in found if m not in g["models"])
     if P.get("free_only", True):
-        pref = [m for m in pref if "pro" not in m.lower()]
+        # only models listed in voice_profile.json (known free tier) and never a 'pro' model;
+        # newly discovered models are NOT used automatically because their pricing is unverified
+        pref = [m for m in pref if m in g["models"] and "pro" not in m.lower()]
     _MODELS = pref or g["models"]
     return _MODELS
 
@@ -112,6 +114,8 @@ def gemini(text, P, voice=None):
                 return resample(pcm, rate), None
             except ProviderDown as e:
                 last = e; msg = str(e)
+                if re.search(r"HTTP 50[0234]", msg) and attempt < 1:
+                    print("  gemini: server error, retrying once", flush=True); time.sleep(5); continue
                 if "HTTP 429" in msg and attempt < 3 and "per day" not in msg.lower() and "PerDay" not in msg:
                     wait = 20 * (attempt + 1); print(f"  gemini: free-tier rate limit, waiting {wait}s", flush=True)
                     time.sleep(wait); continue  # per-minute limit: wait it out. Daily limit: fall through
@@ -261,6 +265,31 @@ def narrate(folder):
             sys.exit(2)
         voice = P[prov].get("voice") or P[prov].get("voice_id")
         clips = []
+        if prov == "gemini" and P["gemini"].get("mode") == "single":
+            # few requests (whole script, else 3 parts): saves free-tier quota and keeps a continuous performance
+            Ps = {**P, "gemini": {**P["gemini"], "direction": P["gemini"]["direction"] + " " + P["gemini"].get("single_note", "")}}
+            done = None
+            for parts in (1, 3):
+                k = -(-len(lines) // parts); groups = [lines[i:i + k] for i in range(0, len(lines), k)]
+                try:
+                    for grp in groups:
+                        txt = "\n\n".join(spoken(l["text"], P["lexicon"]) for l in grp)
+                        h = hashlib.sha1(json.dumps([voice, Ps["gemini"]["direction"], txt]).encode()).hexdigest()[:10]
+                        cache = os.path.join(vo, f"take.gemini.{h}.npz")
+                        if os.path.exists(cache): x = np.load(cache)["x"]
+                        else:
+                            x, _ = gemini(txt, Ps); np.savez(cache, x=x, m=np.array([]))
+                            print(f"  gemini: {len(grp)} lines ✓ ({len(x)/SR:.1f}s)", flush=True)
+                        x, _ = trim(ffmpeg_filter(x, MASTER))
+                        clips += split_lines(x, grp) if len(grp) > 1 else [(x, None)]
+                    done = True; break
+                except ProviderDown as e:
+                    clips = []; last_err = e
+                    if parts == 1 and re.search(r"HTTP 5\d\d|network", str(e)):
+                        print(f"  gemini: whole take failed ({e}); retrying in 3 parts", flush=True); continue
+                    break
+            if done: return assemble(folder, lines, clips, prov, voice)
+            log.append(f"{prov}: {last_err}"); print(f"  {prov} unavailable -> next ({last_err})", flush=True); continue
         try:
             for i, ln in enumerate(lines):
                 txt = spoken(ln["text"], P["lexicon"])
@@ -281,29 +310,42 @@ def narrate(folder):
         return assemble(folder, lines, clips, prov, voice)
 
 
+def split_lines(x, lines):
+    """Cut one continuous take into len(lines) clips. Candidate cuts are pauses (>0.18 s); each boundary is
+    matched to the pause that best combines length and closeness to where the text says it should fall,
+    so a dramatic pause inside a line is not mistaken for a scene change."""
+    n = len(x); N = len(lines)
+    env = np.convolve(np.abs(x), np.ones(960) / 960, "same"); quiet = env < max(0.004, 0.1 * np.percentile(env, 95))
+    d = np.diff(np.concatenate([[0], quiet.astype(int), [0]])); st, en = np.where(d == 1)[0], np.where(d == -1)[0]
+    gaps = [((e - s_) / SR, (s_ + e) // 2) for s_, e in zip(st, en) if (e - s_) / SR > 0.18 and s_ > 0 and e < n]
+    W = [sum(weights(l["text"])[1]) for l in lines]; cum = np.cumsum(W)[:-1] / sum(W) * n
+    if len(gaps) < N - 1:
+        print("  warning: fewer pauses than lines; split by text length (check sync in the preview)")
+        cuts = [int(c) for c in cum]
+    else:
+        G = len(gaps); INF = 1e18
+        cost = lambda i, g: ((gaps[g][1] - cum[i]) / (n / N)) ** 2 * 4 - gaps[g][0] * 3  # closeness vs pause length
+        dp = np.full((N - 1, G), INF); bk = np.zeros((N - 1, G), int)
+        for g in range(G): dp[0][g] = cost(0, g)
+        for i in range(1, N - 1):
+            best, arg = INF, -1
+            for g in range(G):
+                if g > 0 and dp[i - 1][g - 1] < best: best, arg = dp[i - 1][g - 1], g - 1
+                if arg >= 0: dp[i][g] = best + cost(i, g); bk[i][g] = arg
+        g = int(np.argmin(dp[N - 2])); cuts = []
+        for i in range(N - 2, -1, -1):
+            cuts.append(gaps[g][1]); g = bk[i][g]
+        cuts = cuts[::-1]
+    bounds = [0] + cuts + [n]
+    return [(trim(x[a:b])[0], None) for a, b in zip(bounds, bounds[1:])]
+
+
 def import_audio(folder, path):
-    """Split an uploaded recording into the script's lines at its longest silences, then sync."""
+    """Use an uploaded recording: split it into the script's lines at its pauses, then sync."""
     sc = json.load(open(os.path.join(folder, "script.json"), encoding="utf-8")); lines = sc["lines"]
     os.makedirs(os.path.join(folder, "vo"), exist_ok=True)
     x = ffmpeg_filter(load_audio(path), MASTER); x, _ = trim(x)
-    env = np.convolve(np.abs(x), np.ones(960) / 960, "same"); quiet = env < max(0.004, 0.1 * np.percentile(env, 95))
-    gaps, i, n = [], 0, len(x)
-    while i < n:
-        if quiet[i]:
-            j = i
-            while j < n and quiet[j]: j += 1
-            if (j - i) / SR > 0.18: gaps.append(((j - i) / SR, (i + j) // 2))
-            i = j
-        else: i += 1
-    cuts = sorted(c for _, c in sorted(gaps, reverse=True)[:len(lines) - 1])
-    if len(cuts) < len(lines) - 1:  # not enough pauses: split by text length instead
-        tot = sum(sum(weights(l["text"])[1]) for l in lines); acc, cuts = 0, []
-        for l in lines[:-1]:
-            acc += sum(weights(l["text"])[1]); cuts.append(int(n * acc / tot))
-        print("  warning: recording has fewer pauses than lines; split by text length (check sync in the preview)")
-    bounds = [0] + cuts + [n]
-    clips = [(trim(x[a:b])[0], None) for a, b in zip(bounds, bounds[1:])]
-    assemble(folder, lines, clips, "import", os.path.basename(path))
+    assemble(folder, lines, split_lines(x, lines), "import", os.path.basename(path))
 
 
 def brief(folder):

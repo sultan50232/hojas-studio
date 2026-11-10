@@ -7,5 +7,9 @@
 - [x] Tank drawn to its real proportions (27 m wide × 15 m high, with a person for scale), corrected after review
 - [x] Audio: synthesized in code (drone, heartbeat, a silent drop then the explosion, drips, counter ticks, stamp). No licences needed
 - [x] Checked on real frames from the video (contact sheet every 5 seconds)
-- [ ] **Voice-over: not done.** ElevenLabs credits ran out (3 of 10,000 left). This is the text-on-screen version
+- [x] Voice-over: Gemini TTS (gemini-2.5-flash-preview-tts, free tier), voice Algieba, generated as one continuous take (one request)
+- [x] Voice chosen from an audition of three voices: Algieba = deep (~93 Hz), the warmest timbre (spectral centroid 3336 Hz vs 3835/4272) and the most natural pitch movement
+- [x] Pronunciation checked by Gemini transcription (proof.py). Fixed: «تجتاح» (was garbled) and «ظُهْرَ» (it was read as ظَهَرَ, "appeared"). Remaining note: the case ending on «ألف» in the date, normal in spoken dates
+- [x] Scene split checked: every transcribed clip matches its scene line
+- [x] Scenes and captions follow the voice; the explosion lands on the word «انفجر»; music ducks under the voice
 - [ ] Final human review on a phone before publishing

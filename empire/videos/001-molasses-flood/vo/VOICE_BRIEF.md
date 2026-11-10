@@ -1,7 +1,7 @@
 # تسجيل التعليق الصوتي: فيضان الدبس القاتل — بوسطن 1919
 
 ## الهوية الصوتية (ثابتة في كل المقاطع)
-- الصوت المعتمد: **Gacrux** في Gemini TTS (Google AI Studio ← Generate speech)
+- الصوت المعتمد: **Algieba** في Gemini TTS (Google AI Studio ← Generate speech)
 - رجل ناضج، عميق، دافئ، هادئ وواثق. سرد وثائقي سينمائي بلا صراخ ولا تمثيل مبالغ فيه
 - الإيقاع متمهّل (نحو 2.3 كلمة في الثانية). وقفة قصيرة عند الفاصلة والنقطة، ووقفة أطول فيها تشويق عند (…)
 - فصحى سليمة. التشكيل أدناه للنطق فقط
@@ -9,7 +9,7 @@
 ## تعليمات الأداء (انسخها كما هي في خانة Style instructions)
 
 ```
-You are the narrator of a premium Arabic documentary. Read the Arabic text below in clear Modern Standard Arabic with correct classical pronunciation. Voice: a mature man, deep, warm, calm and confident, like a cinematic history documentary. Pace: unhurried, about 2.3 words per second. Pause briefly at commas and full stops, hold a longer, suspenseful pause at every ellipsis (…). Build quiet tension; never shout, never sound dramatic or theatrical, never sound robotic. Do not read these instructions aloud. Text:
+You are the narrator of a premium Arabic documentary. Read the Arabic text below in clear Modern Standard Arabic with correct classical pronunciation. Voice: a mature man, deep, warm, calm and confident, like a cinematic history documentary. Pace: measured but flowing, about 2.6 words per second; do not drag. Keep pauses short at commas and full stops, and hold a slightly longer, suspenseful pause at every ellipsis (…). Build quiet tension; never shout, never sound theatrical, never sound robotic. Do not read these instructions aloud. Text:
 ```
 
 ## النص (سطر لكل مشهد، واترك ثانية صمت بين كل سطر والذي يليه)

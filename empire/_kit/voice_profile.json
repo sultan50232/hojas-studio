@@ -1,15 +1,28 @@
 {
   "_about": "The studio's single voice identity. Every video uses this file unless its own script.json overrides it. Change the voice here once, never per video.",
-  "chain": ["gemini", "manual"],
+  "chain": [
+    "gemini",
+    "manual"
+  ],
   "_chain_note": "ElevenLabs is disabled. To re-enable it as a backup, put \"elevenlabs\" back between gemini and manual.",
   "free_only": true,
   "gemini": {
-    "voice": "Gacrux",
-    "candidates": ["Gacrux", "Charon", "Algieba"],
-    "models": ["gemini-2.5-flash-preview-tts", "gemini-2.5-flash-tts"],
+    "voice": "Algieba",
+    "candidates": [
+      "Gacrux",
+      "Charon",
+      "Algieba"
+    ],
+    "models": [
+      "gemini-2.5-flash-preview-tts",
+      "gemini-2.5-flash-tts"
+    ],
     "_models_note": "Free tier only: models with 'pro' in the name are skipped while free_only is true (no free tier).",
     "key_env": "GEMINI_API_KEY",
-    "direction": "You are the narrator of a premium Arabic documentary. Read the Arabic text below in clear Modern Standard Arabic with correct classical pronunciation. Voice: a mature man, deep, warm, calm and confident, like a cinematic history documentary. Pace: unhurried, about 2.3 words per second. Pause briefly at commas and full stops, hold a longer, suspenseful pause at every ellipsis (…). Build quiet tension; never shout, never sound dramatic or theatrical, never sound robotic. Do not read these instructions aloud. Text:"
+    "direction": "You are the narrator of a premium Arabic documentary. Read the Arabic text below in clear Modern Standard Arabic with correct classical pronunciation. Voice: a mature man, deep, warm, calm and confident, like a cinematic history documentary. Pace: measured but flowing, about 2.6 words per second; do not drag. Keep pauses short at commas and full stops, and hold a slightly longer, suspenseful pause at every ellipsis (…). Build quiet tension; never shout, never sound theatrical, never sound robotic. Do not read these instructions aloud. Text:",
+    "mode": "single",
+    "_voice_note": "Picked 2026-11-10 from an audition of Gacrux/Charon/Algieba: Algieba = deep (~93 Hz), the warmest timbre and the most natural pitch movement. Charon is deeper but flatter; Gacrux is higher (~131 Hz).",
+    "single_note": "Each paragraph is one scene: leave a clear pause of about one second between paragraphs, longer than any pause inside a paragraph."
   },
   "elevenlabs": {
     "voice_id": "nPczCjzI2devNBz1zQrb",
@@ -30,7 +43,15 @@
     "أُصيب": "أُصِيبَ",
     "حُكم": "حُكِمَ",
     "إلزاميًا": "إِلْزَامِيًّا",
-    "لعقود": "لِعُقُود"
+    "لعقود": "لِعُقُود",
+    "ألف وتسعمئة وتسعة عشر": "أَلْفٍ وَتِسْعِمِئَةٍ وَتِسْعَةَ عَشَرَ",
+    "تجتاح": "تَجْتَاحُ",
+    "ظهرَ الخامس عشر": "ظُهْرَ الخَامِسَ عَشَرَ",
+    "عملاق": "عِمْلاقٌ"
   },
-  "pace": {"gap_between_lines": 0.45, "gap_after_ellipsis_line": 0.7, "lead_in": 0.5}
+  "pace": {
+    "gap_between_lines": 0.45,
+    "gap_after_ellipsis_line": 0.7,
+    "lead_in": 0.5
+  }
 }

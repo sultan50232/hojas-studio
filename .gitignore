@@ -16,3 +16,4 @@ empire/_kit/audition/
 .env
 *.env
 !.env.example
+empire/videos/*/vo/*.wav
