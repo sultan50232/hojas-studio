@@ -1,11 +1,13 @@
 {
   "_about": "The studio's single voice identity. Every video uses this file unless its own script.json overrides it. Change the voice here once, never per video.",
-  "chain": ["gemini", "elevenlabs", "manual"],
+  "chain": ["gemini", "manual"],
+  "_chain_note": "ElevenLabs is disabled. To re-enable it as a backup, put \"elevenlabs\" back between gemini and manual.",
   "free_only": true,
   "gemini": {
     "voice": "Gacrux",
     "candidates": ["Gacrux", "Charon", "Algieba"],
-    "models": ["gemini-2.5-pro-preview-tts", "gemini-2.5-flash-preview-tts"],
+    "models": ["gemini-2.5-flash-preview-tts", "gemini-2.5-flash-tts"],
+    "_models_note": "Free tier only: models with 'pro' in the name are skipped while free_only is true (no free tier).",
     "key_env": "GEMINI_API_KEY",
     "direction": "You are the narrator of a premium Arabic documentary. Read the Arabic text below in clear Modern Standard Arabic with correct classical pronunciation. Voice: a mature man, deep, warm, calm and confident, like a cinematic history documentary. Pace: unhurried, about 2.3 words per second. Pause briefly at commas and full stops, hold a longer, suspenseful pause at every ellipsis (…). Build quiet tension; never shout, never sound dramatic or theatrical, never sound robotic. Do not read these instructions aloud. Text:"
   },

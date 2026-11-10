@@ -13,3 +13,6 @@ site/dist/
 empire/videos/*/prev/
 empire/videos/*/vo/*.npz
 empire/_kit/audition/
+.env
+*.env
+!.env.example

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Studio voice-over with automatic fallbacks and one locked voice identity.
 
+  python3 empire/_kit/voice.py check                              # key + free models + one tiny test call
   python3 empire/_kit/voice.py audition [Gacrux Charon Algieba]   # same sample in each voice -> empire/_kit/audition/
   python3 empire/_kit/voice.py <video>                            # narrate script.json via the chain in voice_profile.json
   python3 empire/_kit/voice.py <video> --brief                    # write vo/VOICE_BRIEF.md for a human/external recording
@@ -11,7 +12,7 @@ outage) on ANY line is dropped for the whole video, so a video never mixes two v
 credits or turns on billing; "manual" writes the recording brief and stops.
 Output: vo/<line>.wav, vo/narration.wav, vo/timeline.json (read by build.py).
 """
-import base64, hashlib, json, os, re, subprocess, sys, urllib.error, urllib.request, wave
+import base64, hashlib, json, os, re, subprocess, sys, time, urllib.error, urllib.request, wave
 import numpy as np
 
 KIT = os.path.dirname(os.path.abspath(__file__))
@@ -57,29 +58,81 @@ def post(url, body, headers, timeout=180):
 
 
 # ---------------- providers: each returns (pcm float32 mono @SR, words or None) ----------------
+def gemini_key(P):
+    """GEMINI_API_KEY from the environment, else from empire/.env (git-ignored). Never printed.
+    With neither, a placeholder is sent: in a cloud session the network proxy swaps in the
+    key saved under Network secrets (host generativelanguage.googleapis.com, header x-goog-api-key)."""
+    name = P["gemini"].get("key_env", "GEMINI_API_KEY")
+    if os.environ.get(name): return os.environ[name], "env"
+    envf = os.path.join(os.path.dirname(KIT), ".env")
+    if os.path.exists(envf):
+        for ln in open(envf, encoding="utf-8"):
+            k, _, v = ln.strip().partition("=")
+            if k.strip() == name and v.strip(): return v.strip().strip('"').strip("'"), ".env"
+    return "proxy-injected", "proxy"
+
+
+_MODELS = None
+
+
+def gemini_models(P, key):
+    """TTS models this key can use. free_only drops 'pro' TTS models (no free tier, billed if billing is on)."""
+    global _MODELS
+    if _MODELS is not None: return _MODELS
+    g = P["gemini"]; found = []
+    try:
+        req = urllib.request.Request("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", headers={"x-goog-api-key": key})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            found = [m["name"].split("/")[-1] for m in json.load(r).get("models", []) if "tts" in m["name"].lower()]
+    except Exception:
+        pass
+    pref = [m for m in g["models"] if not found or m in found] + sorted(m for m in found if m not in g["models"])
+    if P.get("free_only", True):
+        pref = [m for m in pref if "pro" not in m.lower()]
+    _MODELS = pref or g["models"]
+    return _MODELS
+
+
 def gemini(text, P, voice=None):
     g = P["gemini"]; voice = voice or g["voice"]
-    key = os.environ.get(g.get("key_env", "GEMINI_API_KEY"), "proxy-injected")
+    key, _ = gemini_key(P)
     last = None
-    for model in g["models"]:
-        try:
-            r = post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-                     {"contents": [{"parts": [{"text": g["direction"] + "\n" + text}]}],
-                      "generationConfig": {"responseModalities": ["AUDIO"],
-                                           "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}}}},
-                     {"x-goog-api-key": key})
-            part = r["candidates"][0]["content"]["parts"][0]["inlineData"]
-            rate = int(re.search(r"rate=(\d+)", part.get("mimeType", "")).group(1)) if "rate=" in part.get("mimeType", "") else 24000
-            pcm = np.frombuffer(base64.b64decode(part["data"]), "<i2").astype(np.float32) / 32768
-            return resample(pcm, rate), None
-        except ProviderDown as e:
-            last = e
-            if "HTTP 404" in str(e) or ("HTTP 400" in str(e) and "model" in str(e).lower() and "key" not in str(e).lower()):
-                continue  # model name retired/unknown: try the next model
-            raise
-        except (KeyError, IndexError) as e:
-            last = ProviderDown(f"unexpected response: {e}")
-    raise last
+    for model in gemini_models(P, key):
+        for attempt in range(4):
+            try:
+                r = post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                         {"contents": [{"parts": [{"text": g["direction"] + "\n" + text}]}],
+                          "generationConfig": {"responseModalities": ["AUDIO"],
+                                               "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}}}},
+                         {"x-goog-api-key": key})
+                part = r["candidates"][0]["content"]["parts"][0]["inlineData"]
+                mt = part.get("mimeType", "")
+                rate = int(re.search(r"rate=(\d+)", mt).group(1)) if "rate=" in mt else 24000
+                pcm = np.frombuffer(base64.b64decode(part["data"]), "<i2").astype(np.float32) / 32768
+                return resample(pcm, rate), None
+            except ProviderDown as e:
+                last = e; msg = str(e)
+                if "HTTP 429" in msg and attempt < 3 and "per day" not in msg.lower() and "PerDay" not in msg:
+                    wait = 20 * (attempt + 1); print(f"  gemini: free-tier rate limit, waiting {wait}s", flush=True)
+                    time.sleep(wait); continue  # per-minute limit: wait it out. Daily limit: fall through
+                break
+            except (KeyError, IndexError) as e:
+                last = ProviderDown(f"unexpected response ({model}): {e}"); break
+        if last and ("HTTP 404" in str(last) or ("HTTP 400" in str(last) and "key" not in str(last).lower())):
+            continue  # this model is unknown or retired for this key: try the next one
+        raise last
+    raise last or ProviderDown("no Gemini TTS model available")
+
+
+def check():
+    """Safe setup check: says WHERE the key comes from (never its value), lists usable free TTS models, makes one tiny call."""
+    P = profile(); key, src = gemini_key(P)
+    print(f"key source: {src}" + ("  (Network secret, injected by the proxy)" if src == "proxy" else ""))
+    print("free-tier TTS models:", ", ".join(gemini_models(P, key)))
+    try:
+        x, _ = gemini("مرحبًا.", P); print(f"test call: ok ({len(x)/SR:.1f}s of audio, voice {P['gemini']['voice']})")
+    except ProviderDown as e:
+        print("test call: failed:", e); sys.exit(1)
 
 
 def elevenlabs(text, P, prev=None, nxt=None):
@@ -288,7 +341,8 @@ def audition(voices):
 if __name__ == "__main__":
     a = sys.argv[1:]
     if not a: sys.exit(__doc__)
-    if a[0] == "audition": audition(a[1:])
+    if a[0] == "check": check()
+    elif a[0] == "audition": audition(a[1:])
     elif "--brief" in a: print(brief(os.path.abspath(a[0])))
     elif "--import" in a: import_audio(os.path.abspath(a[0]), a[a.index("--import") + 1])
     else: narrate(os.path.abspath(a[0]))
