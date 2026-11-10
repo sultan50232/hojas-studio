@@ -10,3 +10,4 @@ node_modules/
 run-demo.bat
 publish-private.md
 site/dist/
+empire/videos/*/prev/

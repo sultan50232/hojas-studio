@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Taj;font-weight:500;src:url(../../_kit/fonts/tajawal-arabic-500-normal.woff2)}
+@font-face{font-family:Taj;font-weight:500;src:url(../../_kit/fonts/tajawal-latin-500-normal.woff2);unicode-range:U+0000-00FF}
+@font-face{font-family:Taj;font-weight:800;src:url(../../_kit/fonts/tajawal-arabic-800-normal.woff2)}
+@font-face{font-family:Taj;font-weight:800;src:url(../../_kit/fonts/tajawal-latin-800-normal.woff2);unicode-range:U+0000-00FF}
+@font-face{font-family:Lal;src:url(../../_kit/fonts/lalezar-arabic-400-normal.woff2)}
+@font-face{font-family:Lal;src:url(../../_kit/fonts/lalezar-latin-400-normal.woff2);unicode-range:U+0000-00FF}
+:root{--bg:#0f0a06;--amber:#E8A33D;--cream:#F5E9D6;--mol:#3a1d08;--mol2:#6b3510;--red:#d8452f}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:var(--bg);font-family:Taj;color:var(--cream)}
+#stage{position:absolute;inset:0;overflow:hidden}
+#bg{position:absolute;inset:-60px;background:radial-gradient(120% 70% at 50% 30%,#2b180b 0%,#140c06 55%,#070403 100%)}
+.scene{position:absolute;inset:0;opacity:0}
+svg{position:absolute;overflow:visible}
+#vig{position:absolute;inset:0;background:radial-gradient(90% 60% at 50% 40%,transparent 50%,rgba(0,0,0,.75) 100%);pointer-events:none}
+#grain{position:absolute;inset:0;opacity:.09;mix-blend-mode:overlay}
+#flash{position:absolute;inset:0;background:#fff3dd;opacity:0}
+#cap{position:absolute;left:70px;right:70px;top:1270px;height:300px;display:flex;align-items:flex-start;justify-content:center;text-align:center}
+#cap p{font-weight:800;font-size:66px;line-height:1.38;text-shadow:0 4px 0 rgba(0,0,0,.55),0 0 30px rgba(0,0,0,.6)}
+#cap span{display:inline-block;transition:none;margin:0 6px}
+#cap span.k{color:var(--amber)}
+.big{font-family:Lal;position:absolute;left:0;right:0;text-align:center;line-height:1}
+.lbl{position:absolute;font-weight:800;font-size:40px;color:var(--cream);text-align:center}
+#brand{position:absolute;top:120px;left:0;right:0;text-align:center;font-weight:800;font-size:30px;letter-spacing:2px;color:rgba(245,233,214,.55)}
+#bar{position:absolute;top:96px;right:90px;left:90px;height:6px;border-radius:3px;background:rgba(255,255,255,.12)}
+#bar i{position:absolute;right:0;top:0;bottom:0;background:var(--amber);border-radius:3px}
+</style></head><body>
+<div id="stage">
+ <div id="bg"></div>
+
+ <!-- 1 HOOK: city + rising wave + ruler -->
+ <div class="scene" id="hook">
+  <div class="big" id="yr" style="top:250px;font-size:300px;color:var(--amber)">1919</div>
+  <div class="lbl" style="top:560px;left:0;right:0;font-size:46px">بوسطن · الولايات المتحدة</div>
+  <svg width="1080" height="700" style="left:0;top:560px" viewBox="0 0 1080 700">
+   <path id="hwave" fill="#5a2a0c" stroke="#c0702a" stroke-width="6" opacity=".95"/>
+   <g id="city" fill="#1d120a" stroke="#3b2414" stroke-width="3" opacity=".9"></g>
+   <g id="ruler" stroke="var(--amber)" stroke-width="5" fill="var(--amber)">
+    <line x1="980" y1="640" x2="980" y2="640" id="rl"/>
+    <text id="rt" x="955" y="620" font-family="Taj" font-weight="800" font-size="44" text-anchor="end" stroke="none"></text>
+   </g>
+  </svg>
+ </div>
+
+ <!-- 2 REVEAL: water drop turns into molasses -->
+ <div class="scene" id="reveal">
+  <svg width="1080" height="1100" style="left:0;top:120px" viewBox="0 0 1080 1100">
+   <defs><radialGradient id="gl" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#c0702a"/><stop offset=".45" stop-color="#5a2a0c"/><stop offset="1" stop-color="#1f0e04"/></radialGradient>
+   <radialGradient id="gw" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#9fd4ff"/><stop offset=".5" stop-color="#2d6fa8"/><stop offset="1" stop-color="#0d2a45"/></radialGradient></defs>
+   <path id="drop" d="M540 120 C 540 120 300 470 300 640 A 240 240 0 0 0 780 640 C 780 470 540 120 540 120 Z" fill="url(#gw)"/>
+   <path id="drop2" d="M540 120 C 540 120 300 470 300 640 A 240 240 0 0 0 780 640 C 780 470 540 120 540 120 Z" fill="url(#gl)" opacity="0"/>
+   <ellipse id="shine" cx="450" cy="560" rx="38" ry="70" fill="#fff" opacity=".35" transform="rotate(20 450 560)"/>
+   <line id="strike" x1="250" y1="980" x2="830" y2="980" stroke="var(--red)" stroke-width="14" stroke-linecap="round"/>
+  </svg>
+  <div class="big" id="maa" style="top:1000px;font-size:120px;color:#9fd4ff">ماء</div>
+ </div>
+
+ <!-- 3 TANK -->
+ <div class="scene" id="tank">
+  <svg width="1080" height="1100" style="left:0;top:130px" viewBox="0 0 1080 1100">
+   <defs><clipPath id="tc"><rect x="243" y="560" width="594" height="330"/></clipPath>
+   <linearGradient id="steel" x1="0" x2="1"><stop offset="0" stop-color="#2a2622"/><stop offset=".35" stop-color="#5b544c"/><stop offset=".6" stop-color="#3a352f"/><stop offset="1" stop-color="#1a1714"/></linearGradient>
+   <linearGradient id="molg" x1="0" x2="1"><stop offset="0" stop-color="#2a1205"/><stop offset=".4" stop-color="#7a3c12"/><stop offset="1" stop-color="#2a1205"/></linearGradient></defs>
+   <ellipse cx="540" cy="560" rx="297" ry="54" fill="#4d4740"/>
+   <rect x="243" y="560" width="594" height="330" fill="url(#steel)"/>
+   <rect id="tfill" x="243" y="890" width="594" height="0" fill="url(#molg)" clip-path="url(#tc)" opacity=".92"/>
+   <g stroke="#1b1815" stroke-width="3" opacity=".7"><line x1="243" y1="640" x2="837" y2="640"/><line x1="243" y1="725" x2="837" y2="725"/><line x1="243" y1="810" x2="837" y2="810"/></g>
+   <ellipse cx="540" cy="890" rx="297" ry="54" fill="#1b1815"/>
+   <!-- person for scale -->
+   <g id="man" fill="var(--cream)"><circle cx="900" cy="860" r="6"/><rect x="895" y="867" width="10" height="24" rx="4"/></g>
+   <text x="900" y="950" font-family="Taj" font-weight="500" font-size="30" text-anchor="middle" fill="rgba(245,233,214,.7)">إنسان</text>
+   <text x="150" y="740" font-family="Taj" font-weight="800" font-size="40" text-anchor="middle" fill="var(--amber)">١٥ م</text>
+   <text x="540" y="1010" font-family="Taj" font-weight="800" font-size="40" text-anchor="middle" fill="var(--amber)">قطر ٢٧ م</text>
+   <line x1="243" y1="965" x2="837" y2="965" stroke="var(--amber)" stroke-width="4" stroke-dasharray="10 10"/>
+   <line x1="200" y1="560" x2="200" y2="890" stroke="var(--amber)" stroke-width="4" stroke-dasharray="10 10"/>
+  </svg>
+  <div class="big" id="cnt" style="top:150px;font-size:118px;color:var(--amber)"></div>
+  <div class="lbl" style="top:290px;left:0;right:0;font-size:42px">لتر من الدبس</div>
+ </div>
+
+ <!-- 4 LEAK + brown paint -->
+ <div class="scene" id="leak">
+  <svg width="1080" height="1100" style="left:0;top:130px" viewBox="0 0 1080 1100">
+   <defs><clipPath id="tc2"><rect x="243" y="560" width="594" height="330"/></clipPath>
+   <linearGradient id="paint" x1="0" x2="1"><stop offset="0" stop-color="#3b2010"/><stop offset=".5" stop-color="#6a3a18"/><stop offset="1" stop-color="#3b2010"/></linearGradient></defs>
+   <ellipse cx="540" cy="560" rx="297" ry="54" fill="#4d4740"/>
+   <rect x="243" y="560" width="594" height="330" fill="url(#steel)"/>
+   <g id="drips"></g>
+   <rect id="paintR" x="243" y="560" width="594" height="0" fill="url(#paint)" clip-path="url(#tc2)"/>
+   <rect id="brush" x="225" y="545" width="630" height="34" rx="12" fill="#8a5a2c"/>
+   <ellipse cx="540" cy="890" rx="297" ry="54" fill="#1b1815"/>
+   <g id="ripple" fill="none" stroke="var(--amber)" stroke-width="4"></g>
+  </svg>
+  <div class="lbl" id="ptag" style="top:420px;left:0;right:0;font-size:56px;color:var(--amber)">الحل؟ طلاء بنّي</div>
+ </div>
+
+ <!-- 5 BURST -->
+ <div class="scene" id="burst">
+  <svg width="1080" height="1200" style="left:0;top:80px" viewBox="0 0 1080 1200">
+   <g id="cracks" stroke="#ffcf7a" stroke-width="7" stroke-linecap="round" fill="none"></g>
+   <g id="shards"></g>
+  </svg>
+  <div class="big" id="boom" style="top:330px;font-size:230px;color:var(--cream)">١٥ يناير</div>
+  <div class="lbl" id="time" style="top:600px;left:0;right:0;font-size:52px;color:var(--amber)">≈ 12:40 ظهرًا</div>
+ </div>
+
+ <!-- 6 WAVE + speedometer -->
+ <div class="scene" id="wave">
+  <svg width="1080" height="1250" style="left:0;top:60px" viewBox="0 0 1080 1250">
+   <path id="wv" fill="#5a2a0c" stroke="#c0702a" stroke-width="6"/>
+   <g id="street" fill="#1d120a" stroke="#3b2414" stroke-width="3" opacity=".85"></g>
+   <g id="el" stroke="#5b544c" stroke-width="10"></g>
+   <g transform="translate(540 430)">
+    <path d="M-230 0 A230 230 0 0 1 230 0" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="26"/>
+    <path id="arc" d="M-230 0 A230 230 0 0 1 230 0" fill="none" stroke="var(--amber)" stroke-width="26" stroke-dasharray="723" stroke-dashoffset="723"/>
+    <line id="needle" x1="0" y1="0" x2="-200" y2="0" stroke="var(--cream)" stroke-width="10" stroke-linecap="round"/>
+    <circle r="18" fill="var(--cream)"/>
+    <text id="kmh" y="150" font-family="Lal" font-size="120" text-anchor="middle" fill="var(--cream)">0</text>
+    <text y="210" font-family="Taj" font-weight="800" font-size="40" text-anchor="middle" fill="rgba(245,233,214,.8)">كم/س</text>
+   </g>
+  </svg>
+ </div>
+
+ <!-- 7 TRAP: thermometer + slow drip -->
+ <div class="scene" id="trap">
+  <svg width="1080" height="1150" style="left:0;top:120px" viewBox="0 0 1080 1150">
+   <g transform="translate(300 0)">
+    <rect x="-34" y="160" width="68" height="640" rx="34" fill="rgba(255,255,255,.1)" stroke="rgba(255,255,255,.35)" stroke-width="4"/>
+    <circle cy="840" r="70" fill="#9fd4ff"/>
+    <rect id="merc" x="-18" y="300" width="36" height="540" fill="#9fd4ff"/>
+    <text x="0" y="120" font-family="Taj" font-weight="800" font-size="44" text-anchor="middle" fill="#9fd4ff">برد الشتاء</text>
+   </g>
+   <g transform="translate(720 0)">
+    <rect x="-180" y="150" width="360" height="40" rx="20" fill="#3a1d08"/>
+    <path id="goo" fill="#5a2a0c"/>
+    <circle id="gdrop" r="26" fill="#6b3510"/>
+    <text x="0" y="1000" font-family="Taj" font-weight="800" font-size="44" text-anchor="middle" fill="var(--amber)">لزوجة ↑</text>
+   </g>
+  </svg>
+ </div>
+
+ <!-- 8 TOLL -->
+ <div class="scene" id="toll">
+  <div class="big" id="dead" style="top:170px;font-size:280px;color:var(--red)">0</div>
+  <div class="lbl" style="top:470px;left:0;right:0;font-size:52px">قتيلًا</div>
+  <svg width="1080" height="560" style="left:0;top:560px" viewBox="0 0 1080 560" id="ppl"></svg>
+  <div class="lbl" id="inj" style="top:1120px;left:0;right:0;font-size:58px;color:var(--amber)"></div>
+ </div>
+
+ <!-- 9 VERDICT -->
+ <div class="scene" id="verdict">
+  <svg width="1080" height="1150" style="left:0;top:150px" viewBox="0 0 1080 1150">
+   <g id="doc" transform="rotate(-4 540 560)">
+    <rect x="230" y="180" width="620" height="800" rx="18" fill="#efe1c6"/>
+    <text x="540" y="290" font-family="Taj" font-weight="800" font-size="54" text-anchor="middle" fill="#2b1a0d">حسابات المبنى</text>
+    <g stroke="#b8a382" stroke-width="12" stroke-linecap="round"><line x1="300" y1="380" x2="780" y2="380"/><line x1="300" y1="440" x2="740" y2="440"/><line x1="300" y1="500" x2="780" y2="500"/><line x1="300" y1="560" x2="680" y2="560"/><line x1="300" y1="620" x2="760" y2="620"/></g>
+    <g id="stamp" transform="translate(600 800)">
+     <circle r="130" fill="none" stroke="var(--red)" stroke-width="12"/>
+     <circle r="104" fill="none" stroke="var(--red)" stroke-width="4"/>
+     <text y="-12" font-family="Taj" font-weight="800" font-size="40" text-anchor="middle" fill="var(--red)">توقيع</text>
+     <text y="40" font-family="Taj" font-weight="800" font-size="40" text-anchor="middle" fill="var(--red)">مهندس</text>
+    </g>
+   </g>
+  </svg>
+  <div class="lbl" id="vtag" style="top:190px;left:0;right:0;font-size:50px;color:var(--amber)">مسؤولية الشركة ⚖</div>
+ </div>
+
+ <!-- 10 END -->
+ <div class="scene" id="end">
+  <div class="big" style="top:300px;font-size:150px;color:var(--amber)">؟</div>
+  <div class="lbl" style="top:520px;left:90px;right:90px;font-size:80px;line-height:1.3">ما أغرب كارثة<br>سمعت عنها؟</div>
+  <div class="lbl" style="top:820px;left:90px;right:90px;font-size:40px;color:rgba(245,233,214,.7)">اكتبها في التعليقات… قد تكون حلقتنا القادمة</div>
+  <div class="lbl" style="top:1080px;left:0;right:0;font-size:28px;color:rgba(245,233,214,.45)">المصادر: Puleo, Dark Tide (2003) · Boston Public Library · Smithsonian Magazine</div>
+ </div>
+
+ <div id="cap"><p></p></div>
+ <canvas id="grain" width="540" height="960"></canvas>
+ <div id="vig"></div>
+ <div id="flash"></div>
+ <div id="bar"><i></i></div>
+ <div id="brand">قصص لا تُصدَّق</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const cl=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const r=(t,a,b)=>cl((t-a)/(b-a));
+const eo=x=>1-Math.pow(1-x,3), eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const back=x=>{const c=1.7;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const ar=n=>String(n).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]);
+function rnd(s){return()=>{s=(s*16807)%2147483647;return s/2147483647}}
+let TL=null, KW=["موجة","ثمانية","أمتار","دِبسَ","سكر","ملايين","لتر","البني،","البني","التسريب.","انفجر","الخزان.","ستة","وخمسين","لزوجة.","يستطع","الخروج.","وعشرون","مئة","وخمسين.","المسؤولية،","المهندس","إلزاميًا.","رائحة","الدبس","كارثة"];
+
+// static geometry
+(function(){
+ const R=rnd(7);let s='';let x=0;
+ while(x<1080){const w=60+R()*90,h=120+R()*330;s+=`<rect x="${x}" y="${640-h}" width="${w}" height="${h+60}"/>`;
+  for(let wy=640-h+25;wy<620;wy+=50)for(let wx=x+14;wx<x+w-20;wx+=34)if(R()>.55)s+=`<rect x="${wx}" y="${wy}" width="14" height="20" fill="#e8a33d" opacity=".55" stroke="none"/>`;
+  x+=w+6}
+ $('city').innerHTML=s;
+ let st='';x=0;const R2=rnd(11);
+ while(x<1080){const w=80+R2()*120,h=160+R2()*260;st+=`<rect x="${x}" y="${1150-h}" width="${w}" height="${h+100}"/>`;x+=w+10}
+ $('street').innerHTML=st;
+ let el='<line x1="0" y1="760" x2="1080" y2="760"/>';for(let i=0;i<1080;i+=135)el+=`<line x1="${i+40}" y1="760" x2="${i+40}" y2="1150"/>`;
+ $('el').innerHTML=el;
+ let p='';for(let i=0;i<150;i++){const c=i%15,rw=Math.floor(i/15);p+=`<g data-i="${i}" transform="translate(${1000-c*62} ${30+rw*52})"><circle cy="0" r="11"/><rect x="-10" y="13" width="20" height="26" rx="7"/></g>`}
+ $('ppl').innerHTML=p;
+})();
+
+const grain=$('grain').getContext('2d');
+function drawGrain(f){const R=rnd(f*31+1);const im=grain.createImageData(540,960);for(let i=0;i<im.data.length;i+=4){const v=R()*255;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255}grain.putImageData(im,0,0)}
+
+function waveP(baseY,amp,ph,w=1080,bottom=1250){let d=`M0 ${bottom} L0 ${baseY}`;for(let x=0;x<=w;x+=20)d+=` L${x} ${baseY+Math.sin(x/90+ph)*amp+Math.sin(x/37+ph*1.7)*amp*.35}`;return d+` L${w} ${bottom} Z`}
+
+const S={
+ hook(t,d){const a=r(t,0,.6);$('yr').style.transform=`scale(${.6+.4*back(a)})`;$('yr').style.opacity=a;
+  const h=eo(r(t,.6,d*.8));const y=640-h*520;$('hwave').setAttribute('d',waveP(y,22,t*3,1080,700));
+  $('rl').setAttribute('y2',y);$('rt').textContent=h>.05?`≈ ${ar(Math.round(h*8))} م`:'';$('rt').setAttribute('y',y+10);},
+ reveal(t,d){const m=r(t,d*.35,d*.55);$('drop2').setAttribute('opacity',m);$('drop').setAttribute('opacity',1-m);
+  const s=1+.04*Math.sin(t*4);$('drop').setAttribute('transform',`translate(540 640) scale(${s} ${2-s}) translate(-540 -640)`);$('drop2').setAttribute('transform',$('drop').getAttribute('transform'));
+  const k=eo(r(t,d*.15,d*.35));$('strike').setAttribute('x2',250+580*k);$('strike').style.opacity=k>0?1:0;
+  $('maa').style.opacity=1-r(t,d*.5,d*.6);},
+ tank(t,d){const f=eio(r(t,.3,d*.85));$('tfill').setAttribute('y',890-330*f);$('tfill').setAttribute('height',330*f);
+  $('cnt').textContent=ar(Math.round(8700000*f).toLocaleString('en').replace(/,/g,'٬')).replace(/٬/g,'٬');$('cnt').style.transform=`scale(${.8+.2*eo(r(t,0,.5))})`;},
+ leak(t,d){let g='';for(let i=0;i<6;i++){const x=330+i*80+((i*37)%30),st=(i*.21)%1,L=eo(r(t,st,st+1.4));g+=`<path d="M${x-20+i*12} ${640+i*37%120} q 6 ${L*60} 0 ${L*120}" stroke="#7a3c12" stroke-width="${10-i%3*2}" stroke-linecap="round" fill="none"/>`}
+  $('drips').innerHTML=g;const p=eio(r(t,d*.55,d*.92));$('paintR').setAttribute('height',330*p);$('brush').setAttribute('y',545+330*p);$('brush').style.opacity=p>0&&p<1?1:0;
+  $('ptag').style.opacity=r(t,d*.5,d*.6);$('ptag').style.transform=`translateY(${(1-eo(r(t,d*.5,d*.62)))*40}px)`;
+  const sh=Math.sin(t*20)*r(t,0,d*.4)*(1-r(t,d*.4,d*.5))*3;$('leak').querySelector('svg').style.transform=`translateX(${sh}px)`;},
+ burst(t,d){const R=rnd(3);let c='',sd='';const k=eo(r(t,.05,.5));
+  for(let i=0;i<14;i++){const a=i/14*Math.PI*2+R()*.3,L=(260+R()*300)*k;let x=540,y=560,pth=`M${x} ${y}`;for(let j=1;j<=4;j++){x=540+Math.cos(a+(R()-.5)*.4)*L*j/4;y=560+Math.sin(a+(R()-.5)*.4)*L*j/4;pth+=` L${x} ${y}`}c+=`<path d="${pth}"/>`;
+   const sp=eo(r(t,.05,1.6))*(500+R()*400);sd+=`<rect x="${540+Math.cos(a)*sp}" y="${560+Math.sin(a)*sp+r(t,.3,d)*300}" width="${20+R()*40}" height="${10+R()*20}" fill="#5b544c" transform="rotate(${t*200*(R()-.5)} ${540+Math.cos(a)*sp} ${560+Math.sin(a)*sp})"/>`}
+  $('cracks').innerHTML=c;$('cracks').style.opacity=1-r(t,.8,1.6);$('shards').innerHTML=sd;
+  $('boom').style.transform=`scale(${1.6-.6*back(r(t,0,.45))})`;$('boom').style.opacity=r(t,0,.15);$('time').style.opacity=r(t,.6,.9);},
+ wave(t,d){const p=eio(r(t,0,d*.8));const xf=1180-p*1500,H=520*eo(r(t,0,.8));
+  let dd=`M1200 1250 L${xf} 1250`;for(let x=xf;x<=1200;x+=15){const k=cl((x-xf)/220);const y=1250-H*(1-Math.pow(1-k,3))-Math.sin(x/60+t*6)*14*k-Math.sin(x/23+t*9)*6*k;dd+=` L${x} ${y}`}dd+=' Z';$('wv').setAttribute('d',dd);
+  document.querySelectorAll('#street rect').forEach(e=>{const x=+e.getAttribute('x');const hit=r(xf,x+120,x-60);e.setAttribute('transform',`rotate(${-hit*9} ${x} 1150)`);e.style.opacity=1-hit*.6});
+  const v=eo(r(t,.2,d*.55));$('needle').setAttribute('transform',`rotate(${v*180*56/100})`);$('arc').setAttribute('stroke-dashoffset',723-723*v*.56);$('kmh').textContent=ar(Math.round(56*v));
+  const sh=(1-r(t,d*.6,d))*6;$('wave').style.transform=`translate(${Math.sin(t*37)*sh}px,${Math.cos(t*29)*sh}px)`;},
+ trap(t,d){const c=eo(r(t,0,d*.6));$('merc').setAttribute('y',300+c*360);$('merc').setAttribute('height',540-c*360);
+  const L=150+eio(r(t,0,d*.95))*620;$('goo').setAttribute('d',`M-80 170 Q -18 ${170+L*.5} -12 ${L} L12 ${L} Q 18 ${170+L*.5} 80 170 Z`);
+  $('gdrop').setAttribute('cx',0);$('gdrop').setAttribute('cy',L+16);},
+ toll(t,d){const k=eo(r(t,.1,d*.45));$('dead').textContent=ar(Math.round(21*k));
+  document.querySelectorAll('#ppl g').forEach(g=>{const i=+g.dataset.i;const on=i<Math.round(21*k);const inj=r(t,d*.45,d*.9)*150>i&&!on;g.setAttribute('fill',on?'#d8452f':inj?'#E8A33D':'rgba(245,233,214,.15)');});
+  $('inj').textContent=t>d*.45?`+ نحو ${ar(Math.round(150*r(t,d*.45,d*.9)))} مصابًا`:'';},
+ verdict(t,d){const s=r(t,d*.45,d*.6);const sc=s<1?3-2*eo(s):1;$('stamp').setAttribute('transform',`translate(600 800) scale(${sc}) rotate(-12)`);$('stamp').style.opacity=s>0?1:0;
+  $('doc').style.transform=`translateY(${(1-eo(r(t,0,.6)))*300}px)`;$('vtag').style.opacity=r(t,.2,.6);
+  if(s>=1&&s<1.01){} $('verdict').querySelector('svg').style.transform=s>=1?`translateY(${Math.sin(r(t,d*.6,d*.66)*Math.PI)*12}px)`:'';},
+ end(t,d){}
+};
+
+window.setup=tl=>{TL=tl};
+window.seek=(T,f)=>{
+ const L=TL.lines;let i=L.findIndex((l,j)=>T<(j+1<L.length?L[j+1].start:1e9));if(i<0)i=L.length-1;
+ const ln=L[i],nx=L[i+1];const sEnd=nx?nx.start:TL.duration;
+ document.querySelectorAll('.scene').forEach(e=>e.style.opacity=0);
+ const el=$(ln.scene);const lt=T-ln.start, d=sEnd-ln.start;
+ const fin=eo(r(lt,0,.25)), fout=1-r(T,sEnd-.18,sEnd);el.style.opacity=Math.min(fin,fout);
+ el.style.transform=`scale(${1.04-.04*eo(r(lt,0,.5))})`;
+ if(ln.scene==='wave')el.style.transform+='';
+ S[ln.scene](lt,d);
+ // caption: words appear on their timing
+ const cap=document.querySelector('#cap p');
+ const words=ln.words.filter(w=>T>=w.s-.05);
+ cap.innerHTML=words.map(w=>{const a=eo(r(T,w.s-.05,w.s+.15));const k=KW.includes(w.w);return `<span class="${k?'k':''}" style="opacity:${a};transform:translateY(${(1-a)*18}px) scale(${k?1+.08*(1-r(T,w.s+.1,w.s+.4)):1})">${w.w}</span>`}).join(' ');
+ cap.style.opacity=fout<1&&nx?Math.max(fout,.0):1;
+ $('cap').style.top=(ln.scene==='end'?1350:1270)+'px';
+ // flash on burst
+ $('flash').style.opacity=ln.scene==='burst'?.9*(1-r(lt,0,.35)):0;
+ const shake=ln.scene==='burst'?(1-r(lt,0,1.2))*24:0;$('stage').style.transform=`translate(${Math.sin(T*90)*shake}px,${Math.cos(T*70)*shake}px)`;
+ $('bg').style.transform=`translate(${Math.sin(T*.2)*30}px,${Math.cos(T*.15)*30}px) scale(1.05)`;
+ document.querySelector('#bar i').style.width=(T/TL.duration*100)+'%';
+ drawGrain(f||0);
+};
+</script>
+</body></html>
